@@ -18,9 +18,9 @@ locals {
   teams = var.hpc ? ["hpc-team-a", "hpc-team-b"] : var.agent ? ["capital-agent", "vllm-model"] : setunion([
     "cb-frontend",
     "cb-accounts",
-    "cb-ledger"],
-    !var.single_project ? ["cymbalshops"] : []
-  )
+    "cb-ledger",
+    "cymbalshops"
+  ])
 }
 
 resource "random_string" "prefix" {
