@@ -245,6 +245,59 @@ steps:
       - deploy-agent
     allowFailure: true
 
+  - id: ssp-cymbal-shop-init
+    name: "gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS"
+    args:
+      ["/bin/bash", "-c", "cft test run TestStandaloneSingleProjectCymbalShop --stage init --verbose"]
+    waitFor:
+      - vpc-sc
+
+  - id: ssp-cymbal-shop-apply
+    name: "gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS"
+    args:
+      ["/bin/bash", "-c", "cft test run TestStandaloneSingleProjectCymbalShop --stage apply --verbose"]
+    waitFor:
+      - ssp-cymbal-shop-init
+
+  - id: ssp-cymbal-shop-verify
+    name: "gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS"
+    args:
+      ["/bin/bash", "-c", "sleep 5m && cft test run TestStandaloneSingleProjectCymbalShop --stage verify --verbose"]
+    waitFor:
+      - ssp-cymbal-shop-apply
+
+  - id: deploy-cymbal-shop
+    name: "gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |-
+        gcloud storage cp gs://$(terraform -chdir=/workspace/test/setup/harness/gitlab output -raw gitlab_ssl_bucket_name)/gitlab.crt /usr/local/share/ca-certificates
+        update-ca-certificates
+        if (ls /etc/ssl/certs | grep gitlab.pem); then
+            cft test run TestSingleProjectSourceCymbalShop --stage verify --verbose || exit 1
+        else
+            echo ERROR: Was not able to download certificate and update system bundle. && exit 1
+        fi
+    waitFor:
+      - ssp-cymbal-shop-apply
+      - ssp-cymbal-shop-verify
+
+  - id: e2e-cymbal-shop-verify
+    name: "gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS"
+    args:
+      ["/bin/bash", "-c", "sleep 5m && cft test run TestAppE2ECymbalShopSingleProject --stage verify --verbose"]
+    waitFor:
+      - deploy-cymbal-shop
+
+  - id: ssp-cymbal-shop-teardown
+    name: "gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS"
+    args:
+      ["/bin/bash", "-c", "cft test run TestStandaloneSingleProjectCymbalShop --stage teardown --verbose"]
+    waitFor:
+      - e2e-cymbal-shop-verify
+    allowFailure: true
+
   - id: vpcsc-teardown
     name: "gcr.io/cloud-foundation-cicd/$_DOCKER_IMAGE_DEVELOPER_TOOLS:$_DOCKER_TAG_VERSION_DEVELOPER_TOOLS"
     args:
@@ -257,6 +310,7 @@ steps:
       - ssp-hello-world-teardown
       - ssp-agent-teardown
       - ssp-llm-model-teardown
+      - ssp-cymbal-shop-teardown
     allowFailure: true
 
   - id: gitlab-teardown
@@ -297,5 +351,5 @@ options:
     - "TF_VAR_region=us-central1"
     - "TF_VAR_location=us-central1"
     - "_SKIP_GITLAB=false"
-    - 'TF_VAR_examples_tested=["llm-model","agent","default-example"]'
+    - 'TF_VAR_examples_tested=["llm-model","agent","default-example","cymbal-shop"]'
     - "CLOUDSDK_CONTAINER_USE_APPLICATION_DEFAULT_CREDENTIALS=true"
