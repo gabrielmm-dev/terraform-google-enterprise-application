@@ -205,6 +205,7 @@ func TestBootstrapGitlabVM(t *testing.T) {
 		"../../../examples/llm-model/5-appinfra/llm-model/llamma-model/envs/shared/terraform.tfvars",
 		"../../../examples/multitenant-applications/5-appinfra/cymbal-bank/accounts-contacts/envs/shared/terraform.tfvars",
 		"../../../examples/multitenant-applications/5-appinfra/cymbal-shop/cymbalshop/envs/shared/terraform.tfvars",
+		"../../../examples/cymbal-shop/standalone-single-project/terraform.tfvars",
 	}
 
 	for _, filePath := range printFiles {
